@@ -56,74 +56,43 @@ export async function saveChat({
   userId: string;
   title: string;
 }) {
-  try {
-    return await db.insert(chat).values({
-      id,
-      createdAt: new Date(),
-      userId,
-      title,
-    });
-  } catch (error) {
-    console.error('Failed to save chat in database');
-    throw error;
-  }
+  // 不写入数据库，直接返回
+  console.log('模拟保存聊天:', { id, userId, title });
+  return { id, userId, title };
 }
 
 export async function deleteChatById({ id }: { id: string }) {
-  try {
-    await db.delete(vote).where(eq(vote.chatId, id));
-    await db.delete(message).where(eq(message.chatId, id));
-
-    return await db.delete(chat).where(eq(chat.id, id));
-  } catch (error) {
-    console.error('Failed to delete chat by id from database');
-    throw error;
-  }
+  // 不删除数据库记录，直接返回
+  console.log('模拟删除聊天:', id);
+  return { success: true, id };
 }
 
 export async function getChatsByUserId({ id }: { id: string }) {
-  try {
-    return await db
-      .select()
-      .from(chat)
-      .where(eq(chat.userId, id))
-      .orderBy(desc(chat.createdAt));
-  } catch (error) {
-    console.error('Failed to get chats by user from database');
-    throw error;
-  }
+  // 不从数据库查询，直接返回空数组
+  return [];
 }
 
 export async function getChatById({ id }: { id: string }) {
-  try {
-    const [selectedChat] = await db.select().from(chat).where(eq(chat.id, id));
-    return selectedChat;
-  } catch (error) {
-    console.error('Failed to get chat by id from database');
-    throw error;
-  }
+  // 不从数据库查询，直接返回假数据
+  return {
+    id,
+    userId: 'global-user',
+    title: '新对话',
+    createdAt: new Date(),
+    visibility: 'public' as const,
+    updatedAt: new Date()
+  };
 }
 
 export async function saveMessages({ messages }: { messages: Array<Message> }) {
-  try {
-    return await db.insert(message).values(messages);
-  } catch (error) {
-    console.error('Failed to save messages in database', error);
-    throw error;
-  }
+  // 不写入数据库，直接返回
+  console.log('模拟保存消息:', messages.length);
+  return { count: messages.length };
 }
 
 export async function getMessagesByChatId({ id }: { id: string }) {
-  try {
-    return await db
-      .select()
-      .from(message)
-      .where(eq(message.chatId, id))
-      .orderBy(asc(message.createdAt));
-  } catch (error) {
-    console.error('Failed to get messages by chat id from database', error);
-    throw error;
-  }
+  // 不从数据库查询，直接返回空数组
+  return [];
 }
 
 export async function voteMessage({
