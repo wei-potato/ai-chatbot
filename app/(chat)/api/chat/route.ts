@@ -25,6 +25,21 @@ import { getWeather } from '@/lib/ai/tools/get-weather';
 import { isProductionEnvironment } from '@/lib/constants';
 import { NextResponse } from 'next/server';
 import { myProvider } from '@/lib/ai/providers';
+import { type Session } from 'next-auth';
+
+// 默认用户配置
+const DEFAULT_USER = {
+  id: 'global-user',
+  name: '公共用户',
+  email: 'public@example.com',
+  image: null
+};
+
+// 创建默认会话
+const DEFAULT_SESSION: Session = {
+  user: DEFAULT_USER,
+  expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30天后过期
+};
 
 export const maxDuration = 60;
 
@@ -41,10 +56,9 @@ export async function POST(request: Request) {
     } = await request.json();
 
     const session = await auth();
-
-    if (!session || !session.user || !session.user.id) {
-      return new Response('Unauthorized', { status: 401 });
-    }
+    // 使用默认用户或已登录用户
+    const user = session?.user || DEFAULT_USER;
+    const userSession = session || DEFAULT_SESSION;
 
     const userMessage = getMostRecentUserMessage(messages);
 
@@ -58,7 +72,8 @@ export async function POST(request: Request) {
       const title = await generateTitleFromUserMessage({
         message: userMessage,
       });
-      await saveChat({ id, userId: session.user.id, title });
+      // 确保userId是字符串类型
+      await saveChat({ id, userId: user.id as string, title });
     }
 
     await saveMessages({
@@ -85,35 +100,33 @@ export async function POST(request: Request) {
           experimental_generateMessageId: generateUUID,
           tools: {
             getWeather,
-            createDocument: createDocument({ session, dataStream }),
-            updateDocument: updateDocument({ session, dataStream }),
+            createDocument: createDocument({ session: userSession, dataStream }),
+            updateDocument: updateDocument({ session: userSession, dataStream }),
             requestSuggestions: requestSuggestions({
-              session,
+              session: userSession,
               dataStream,
             }),
           },
           onFinish: async ({ response, reasoning }) => {
-            if (session.user?.id) {
-              try {
-                const sanitizedResponseMessages = sanitizeResponseMessages({
-                  messages: response.messages,
-                  reasoning,
-                });
+            try {
+              const sanitizedResponseMessages = sanitizeResponseMessages({
+                messages: response.messages,
+                reasoning,
+              });
 
-                await saveMessages({
-                  messages: sanitizedResponseMessages.map((message) => {
-                    return {
-                      id: message.id,
-                      chatId: id,
-                      role: message.role,
-                      content: message.content,
-                      createdAt: new Date(),
-                    };
-                  }),
-                });
-              } catch (error) {
-                console.error('Failed to save chat');
-              }
+              await saveMessages({
+                messages: sanitizedResponseMessages.map((message) => {
+                  return {
+                    id: message.id,
+                    chatId: id,
+                    role: message.role,
+                    content: message.content,
+                    createdAt: new Date(),
+                  };
+                }),
+              });
+            } catch (error) {
+              console.error('Failed to save chat');
             }
           },
           experimental_telemetry: {
@@ -146,15 +159,13 @@ export async function DELETE(request: Request) {
   }
 
   const session = await auth();
-
-  if (!session || !session.user) {
-    return new Response('Unauthorized', { status: 401 });
-  }
+  // 使用默认用户或已登录用户
+  const user = session?.user || DEFAULT_USER;
 
   try {
     const chat = await getChatById({ id });
 
-    if (chat.userId !== session.user.id) {
+    if (chat.userId !== user.id) {
       return new Response('Unauthorized', { status: 401 });
     }
 

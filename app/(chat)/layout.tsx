@@ -8,6 +8,14 @@ import Script from 'next/script';
 
 export const experimental_ppr = true;
 
+// 默认用户配置
+const DEFAULT_USER = {
+  id: 'global-user',
+  name: '公共用户',
+  email: 'public@example.com',
+  image: null
+};
+
 export default async function Layout({
   children,
 }: {
@@ -15,6 +23,9 @@ export default async function Layout({
 }) {
   const [session, cookieStore] = await Promise.all([auth(), cookies()]);
   const isCollapsed = cookieStore.get('sidebar:state')?.value !== 'true';
+  
+  // 使用默认用户或已登录用户
+  const user = session?.user || DEFAULT_USER;
 
   return (
     <>
@@ -23,7 +34,7 @@ export default async function Layout({
         strategy="beforeInteractive"
       />
       <SidebarProvider defaultOpen={!isCollapsed}>
-        <AppSidebar user={session?.user} />
+        <AppSidebar user={user} />
         <SidebarInset>{children}</SidebarInset>
       </SidebarProvider>
     </>
